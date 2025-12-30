@@ -1,0 +1,19 @@
+[package]
+name = "kuksa_client_proto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# This downloads at least 67 crates...
+# Support for gRPC
+tonic = "0.12"  
+# Support for Protobuf
+prost = "0.13"
+prost-types = "0.13"
+# Asynchronous programming
+tokio = { version = "1.0", features = ["full"] }
+tokio-stream = "0.1"
+
+[build-dependencies]
+# Support for Protobuf
+tonic-build = "0.12"

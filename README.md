@@ -1,0 +1,100 @@
+![Rust](https://img.shields.io/badge/rust-000000.svg?style=for-the-badge&logo=rust&logoColor=white)![Docker](https://img.shields.io/badge/docker-1D63ED.svg?style=for-the-badge&logo=docker&logoColor=white)
+
+## Intro
+This project is the result of some free time I used to learn a little bit of Rust. The core thing to me is to learn Rust. Nevertheless, you always need a topic to write a software for, and so I decided to write a client for the [Kuksa Databroker](https://github.com/eclipse-kuksa/).
+
+The client is using the [Tonic](https://github.com/hyperium/tonic) framework to access Kuksa via pure gRPC. Doing this, it relies on latest API version `kuksa.val.v2`.
+
+## Getting started
+### Prerequisites
+Please make sure that you have all needed tools installed on your machine, like:
+* Rust compiler, Cargo, ...
+* Protocol Buffers tooling
+* Podman or Docker
+
+### Create Rust project
+Create a new Rust project with Cargo:
+   ```sh
+   cargo new kuksa_client_proto
+   ```
+Create a folder named `proto` in the root directory of the new Rust project and copy the needed `.proto` definition files of [kuksa.val.v2](https://github.com/eclipse-kuksa/kuksa-databroker/tree/main/proto/kuksa/val/v2) to the directory. 
+
+### Manage dependencies
+To work with Protocol Buffers and gRPC, we need to add some frameworks to the dependencies: _Prost_ to generate Rust code from `*.proto` files, _Tonic_ for using gRPC, and _Tokio_ to support asynchronous programming paradigms. The following code adds them to the TOML file:
+
+```toml
+[dependencies]
+# Support for gRPC
+tonic = "0.12"  
+# Support for Protobuf
+prost = "0.13"
+prost-types = "0.13"
+# Asynchronous programming
+tokio = { version = "1.0", features = ["full"] }
+tokio-stream = "0.1"
+
+[build-dependencies]
+# Support for gRPC
+tonic-build = "0.12"
+```
+
+### Create build script
+Create a file named `build.rs` in the root directory of the new Rust project. Cargo will build and execute this code before it will build the actual program. We need this to generate Rust code from the `.proto` files, which will be included into our program. This is the place where the `protoc` compiler will be invoked. Put the following code in it:
+
+```rust
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tonic_build::configure()
+        .compile_protos(
+            &["proto/kuksa/val/v2/val.proto"],
+            &["proto"], // Include-Path
+        )?;
+    Ok(())
+}
+```
+`compile_protos` takes two arrays as parameters. The first one contains the actual `.proto` files we want to use for Rust code generation, and the second one contains the **include path** for other `*.proto` files. The `val.proto` file contains the following line:
+
+```proto
+import "kuksa/val/v2/types.proto";
+```
+This includes another file named `types.proto` within the `val.proto` file, and include path helps to find this file.
+
+### Start Kuksa databroker
+Starting Kuksa and its command line interface is described well in the [Kuksa databroker repository](https://github.com/eclipse-kuksa/kuksa-databroker). Here is a short wrap up.
+
+First, create a custom Docker bridge network:
+
+```sh
+docker network create kuksa
+```
+
+To start Databroker in a container attached to the _kuksa_ bridge network using hostname _Server_ and exposing its port to _55556_:
+
+   ```sh
+   docker run -it --rm --name Server --network kuksa -p 55556:55555 ghcr.io/eclipse-kuksa/kuksa-databroker:main --insecure
+   ```
+   Exposing the port is needed to access to Kuksa from the Rust program running on _localhost_.
+
+   Start the CLI in a new terminal:
+
+   ```sh
+   docker run -it --rm --network kuksa ghcr.io/eclipse-kuksa/kuksa-databroker-cli:main --server Server:55555
+   ```
+## The client
+
+As the first step, we need to add the generated proto code to the `src/main.rs`file:
+
+   ```rust
+   use kuksa::val::v2::val_client::ValClient;
+use kuksa::val::v2::GetValueRequest;
+use kuksa::val::v2::SignalId; 
+use kuksa::val::v2::signal_id::Signal;
+
+// Include the generated Kuksa modules
+pub mod kuksa {
+    pub mod val {
+        pub mod v2 {
+            tonic::include_proto!("kuksa.val.v2");
+        }
+    }
+}
+````

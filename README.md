@@ -15,7 +15,7 @@ Please make sure that you have all needed tools installed on your machine, like:
 ### Create Rust project
 Create a new Rust project with Cargo:
    ```sh
-   cargo new kuksa_client_proto
+   cargo new KuksaClientProto
    ```
 Create a folder named `proto` in the root directory of the new Rust project and copy the needed `.proto` definition files of [kuksa.val.v2](https://github.com/eclipse-kuksa/kuksa-databroker/tree/main/proto/kuksa/val/v2) to the directory. 
 

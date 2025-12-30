@@ -22,7 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create request - Vehicle.Speed
     let request = tonic::Request::new(GetValueRequest {
         signal_id: Some(SignalId {
-            // Das Feld heißt 'signal', weil dein oneof so benannt ist
             signal: Some(Signal::Path("Vehicle.Speed".to_string())),
         }),
     });
@@ -31,10 +30,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(response) => {
             let reply = response.into_inner();
             if let Some(dp) = reply.data_point {
-                println!("Erfolg! Datenpunkt erhalten: {:?}", dp.value);
+                println!("Success! Received data point {:?}", dp.value);
             }
         },
-        Err(e) => println!("Fehler: {}", e),
+        Err(e) => println!("Error: {}", e),
     }
 
     Ok(())

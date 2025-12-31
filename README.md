@@ -120,7 +120,16 @@ In this part, we create the gRPC client and connect to the Kuksa Server. The gRP
     let mut client = ValClient::connect(addr).await?;
     println!("Connected to KUKSA VAL v2 Broker at address {}", addr);
 ```
-At this point, we are ready to do the actual gRPC request to Kuksa:
+The generated code of the `ValClient::connect` function internally creates a new connection endpoint and establishes the actual connection. The generated code should look like this:
+
+```rust
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+```
+
+At this point, we are ready to do the actual gRPC request to Kuksa. We will use the simple `GetValueRequest` function, which has been generated from the `*.proto` files. See the code first:
 
 ```rust
     // Create request - Vehicle.Speed
@@ -130,3 +139,27 @@ At this point, we are ready to do the actual gRPC request to Kuksa:
         }),
     });
 ```
+
+Now it is getting a little bit interesting. The actual Protobuf message is declared as follows:
+
+```proto
+message SignalID {
+  oneof signal {
+    // Numeric identifier to the signal
+    // As of today Databroker assigns arbitrary unique numbers to each registered signal
+    // at startup, meaning that identifiers may change after restarting Databroker.
+    // A mechanism for static identifiers may be introduced in the future.
+    int32 id    = 1;
+    // Full VSS-style path to a specific signal, like "Vehicle.Speed"
+    // Wildcards and paths to branches are not supported.
+    // The given path must be known by the Databroker.
+    string path = 2;
+  }
+}
+
+message GetValueRequest {
+  SignalID signal_id = 1;
+}
+```
+
+The `oneof` keyword in Protobuf means, that `SignalID` _either_ is an id of the type `int32`, _or_ a `string` containing the path (in our case `Vehicle.Speed`). The numbers behind the `=` sign are _tags_. They are used in Protobuf to minimize the data to be transferred. Instead of sending something like `path = Vehicle.Speed`, Protobuf will just send something like `2 = Vehicle.Speed`.
